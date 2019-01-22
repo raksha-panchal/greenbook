@@ -5,12 +5,26 @@ var config = require('./config');
 var bodyParser=require('body-parser')
 var mongoose=require('mongoose')
 var model=require('./model')
+var useraction=require('./useraction')
 mongoose.connect(config.URL)
 var app = express();
 app.use(bodyParser.json())
 let async = require('async')
 let getAllNames =[]
-let counter = new Array(8).fill("");
+var json2xls = require('json2xls');
+var fs = require('fs');
+app.use(json2xls.middleware)
+
+// ............ convert json to xml data modules
+
+// const xmlOptions = {
+//     header: true,
+//     indent: '  '
+//   };
+// const { toXML } = require('jstoxml');
+
+let counter = new Array(3).fill("");
+
 let counters = 0; 
 
 async.forEachSeries(counter,function(value,callback){
@@ -30,15 +44,15 @@ async.forEachSeries(counter,function(value,callback){
         counters++;
     })
 }, function(){
-    
- var result=  getAllNames.map((cname)=>{
+    var data1=new Array();
+        getAllNames.map((cname)=>{
        var option1 = {
           url: `https://www.greenbook.org${cname}`,
             transform: function (body) {
                 return cheerio.load(body).html();
             }
         }
-       rs(option1).then((m) => {
+       rs(option1).then(async(m) => {
            let $ = cheerio.load(m);
              let name=$('.box-title').find('h2[itemprop="name"]').text().trim();
              let phoneNumber=[];
@@ -54,7 +68,7 @@ async.forEachSeries(counter,function(value,callback){
                             if(phoneNumber.indexOf(name)== -1){
                                 phoneNumber.push(name)
                             }else{
-                              return
+                            
                             }
                          
                         }
@@ -68,7 +82,7 @@ async.forEachSeries(counter,function(value,callback){
                         if(fax.indexOf(name)== -1){
                             fax.push(name)
                         }else{
-                            return
+                            
                         }
                       
                     }
@@ -86,7 +100,12 @@ async.forEachSeries(counter,function(value,callback){
                 })
             var a={
             name,phoneNumber,fax,urls,address,socialLink,emailId
-          }
+           }
+            data1.push(a)
+        // only one method to convert data
+         var b= toXML({a},xmlOptions) 
+         
+         console.log("in xml data",b)
           var user=new model(a)
           user.save((err,data1)=>{
            if(err){
@@ -97,11 +116,18 @@ async.forEachSeries(counter,function(value,callback){
        })
     
      })
-    })
-  
+   })
+    
+
  
 })
 
+
+
+
+app.get('/getdata',(req,res)=>{
+    useraction.getdata(req,res)
+ })
 
 app.listen(config.port, () => {
     console.log("server up")
